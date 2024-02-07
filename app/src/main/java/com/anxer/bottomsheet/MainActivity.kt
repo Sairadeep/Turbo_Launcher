@@ -271,7 +271,6 @@ fun BottomSheetDemo() {
                                     )
                                 }
                             }
-
                         }
                     )
                 }
