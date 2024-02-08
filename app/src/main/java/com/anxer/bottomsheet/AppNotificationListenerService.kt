@@ -2,44 +2,39 @@ package com.anxer.bottomsheet
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import androidx.compose.runtime.mutableIntStateOf
+import android.widget.Toast
+import androidx.compose.runtime.mutableStateMapOf
 
 class AppNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if (sbn != null) {
-            when (sbn.packageName) {
-                "com.whatsapp" -> {
-                    // Log.d("AppNotified", sbn.notification.number.toString())
-                    BadgeCount.setWhatsAppBadgeCount(sbn.notification.number)
-                }
-
-                "com.instagram.android" -> {
-                    BadgeCount.setInstaBadgeCount(sbn.notification.number)
-                }
-            }
+            BadgeCount.setAppBadgeCount(sbn.packageName, sbn.notification.number)
+            Toast.makeText(
+                this,
+                "${BadgeCount.getWhatsappBadgeCount(sbn.packageName)}",
+                Toast.LENGTH_SHORT
+            ).show()
         }
+    }
 
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        if (sbn != null) {
+            BadgeCount.setAppBadgeCount(sbn.packageName, 0)
+        }
     }
 }
 
+
 object BadgeCount {
-    private val whatsAppBadgeCount = mutableIntStateOf(0)
-    private val instaBadgeCount = mutableIntStateOf(0)
 
-    fun setWhatsAppBadgeCount(number: Int) {
-        whatsAppBadgeCount.intValue = number
+    private val BadgeCount = mutableStateMapOf<String, Int>()
+
+    fun setAppBadgeCount(packageName: String, number: Int) {
+        BadgeCount[packageName] = number
     }
 
-    fun getWhatsappBadgeCount(): Int {
-        return whatsAppBadgeCount.intValue
-    }
-
-    fun setInstaBadgeCount(number: Int) {
-        instaBadgeCount.intValue = number
-    }
-
-    fun getInstaBadgeCount(): Int {
-        return instaBadgeCount.intValue
+    fun getWhatsappBadgeCount(packageName: String): Int {
+        return BadgeCount[packageName] ?: 0
     }
 }
