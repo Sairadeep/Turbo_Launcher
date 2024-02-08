@@ -4,9 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.LauncherApps
-import android.content.pm.LauncherApps.ShortcutQuery.FLAG_MATCH_CACHED
-import android.content.pm.LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST
-import android.content.pm.LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED
+import android.content.pm.LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -56,8 +54,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
@@ -107,8 +106,6 @@ class MainActivity : ComponentActivity() {
 fun BottomSheetDemo() {
     val myContext = LocalContext.current
     val toDisplayBS = remember { mutableStateOf(false) }
-    val textValue = remember { mutableStateOf("Name") }
-    val buttonText = remember { mutableStateOf("Open BS") }
     val packM = myContext.packageManager
     val intent = Intent(Intent.ACTION_MAIN)
     intent.addCategory(Intent.CATEGORY_LAUNCHER)
@@ -117,7 +114,6 @@ fun BottomSheetDemo() {
         val packageName = it.activityInfo.packageName
         val appName = it.loadLabel(packM).toString()
         val appIcon = it.loadIcon(packM).toBitmap()
-
         AppInfo(packageName, appName, appIcon)
     }
 
@@ -126,6 +122,7 @@ fun BottomSheetDemo() {
     val badgeNumber = remember { mutableStateMapOf<String, Int>() }
     val longClickShortcutApp = remember { mutableStateMapOf<String, Boolean>() }
     val toShowBadge = remember { mutableStateOf(false) }
+    val bottomBarStatus = remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
@@ -135,65 +132,78 @@ fun BottomSheetDemo() {
     ) {
         Scaffold(
             bottomBar = {
-                BottomAppBar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(75.dp)
-                        .padding(15.dp)
-                        .clip(RoundedCornerShape(20.dp)),
-                    containerColor = Color.LightGray,
-                    contentColor = Color.Black
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                if (bottomBarStatus.value) {
+                    BottomAppBar(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(75.dp)
+                            .padding(15.dp)
+                            .clip(RoundedCornerShape(20.dp)),
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White
                     ) {
-                        IconButton(
-                            onClick = {
-                                toDisplayBS.value = true
-                            }
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(
-                                Icons.TwoTone.Home,
-                                contentDescription = "",
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            IconButton(
+                                onClick = {
+                                    toDisplayBS.value = true
+                                    bottomBarStatus.value = false
+                                }
+                            ) {
+                                Icon(
+                                    Icons.TwoTone.Home,
+                                    contentDescription = "",
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                         }
                     }
                 }
             },
             content = {
                 Column(
-                    modifier = Modifier
-                        .padding(it)
-                        .fillMaxSize(),
+                    modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Home Screen",
-                        fontSize = 25.sp,
-                        fontFamily = FontFamily.Serif,
-                        textAlign = TextAlign.Center
+                    Image(
+                        painter = painterResource(id = R.drawable.bg),
+                        contentDescription = "Background Image",
+                        alignment = Alignment.Center,
+                        contentScale = ContentScale.FillBounds,
+                        modifier = Modifier.fillMaxSize()
                     )
+                    Column(
+                        modifier = Modifier
+                            .padding(it)
+                            .fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+
+                    }
                 }
+
             }
         )
         if (toDisplayBS.value) {
             ModalBottomSheet(
                 onDismissRequest = {
                     toDisplayBS.value = false
-                    buttonText.value = textValue.value
+                    bottomBarStatus.value = true
                 },
                 modifier = Modifier.fillMaxSize(),
                 shape = RoundedCornerShape(30.dp),
-                scrimColor = Color.DarkGray,
+                scrimColor = Color.Transparent,
                 sheetState = SheetState(
                     skipPartiallyExpanded = true,
                     skipHiddenState = false
                 ),
-                contentColor = Color.Black
+                contentColor = Color.White,
+                containerColor = Color.Transparent
             ) {
                 LazyGridToDisplayApps(
                     apps,
@@ -305,16 +315,20 @@ private fun LazyGridToDisplayApps(
                                         )
                                 ) {
                                     val shortcutQuery = LauncherApps.ShortcutQuery()
-                                    shortcutQuery.setQueryFlags(FLAG_MATCH_PINNED or FLAG_MATCH_CACHED or FLAG_MATCH_MANIFEST)
+                                    shortcutQuery.setQueryFlags(FLAG_MATCH_DYNAMIC)
                                         .setPackage(appsInOrder[index].appPackage)
-                                    Log.d(
-                                        "CurrentShortcuts", "${
-                                            launcherApps.getShortcuts(
-                                                shortcutQuery,
-                                                Process.myUserHandle()
-                                            )
-                                        }"
+                                    val shortcuts = launcherApps.getShortcuts(
+                                        shortcutQuery,
+                                        Process.myUserHandle()
                                     )
+                                    if (shortcuts != null) {
+                                        for (shortcut in shortcuts) {
+                                            Log.d(
+                                                "CurrentShortcuts",
+                                                "${appsInOrder[index].appName} : $shortcuts"
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -322,12 +336,18 @@ private fun LazyGridToDisplayApps(
                             bitmap = (appsInOrder[index].appIcon).asImageBitmap(),
                             contentDescription = ""
                         )
-                        if (toShowBadge.value) BadgedBox(badge = { Text(text = "${badgeNumber[appsInOrder[index].appPackage]}", fontSize = 11.sp, textAlign = TextAlign.Left) }) {}
+                        if (toShowBadge.value) BadgedBox(badge = {
+                            Text(
+                                text = "${badgeNumber[appsInOrder[index].appPackage]}",
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.Left
+                            )
+                        }) {}
                     }
                     Row {
                         Text(
                             text = appsInOrder[index].appName,
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             textAlign = TextAlign.Center,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
